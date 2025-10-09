@@ -2,13 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <windows.h>
-
-int main() {
-    SetConsoleOutputCP(65001); // ให้ Console แสดงผล UTF-8
-    SetConsoleCP(65001);       // ให้ scanf ใช้ UTF-8
-    printf("ทดสอบภาษาไทย\n");
-    return 0;
-}
+#include <locale.h>
 
 #define MAX_PROJECTS 100
 #define MAX_LEN 100
@@ -19,7 +13,6 @@ char endDates[MAX_PROJECTS][MAX_LEN];
 char evaluationResults[MAX_PROJECTS][MAX_LEN];
 int projectCount = 0;
 
-// อ่านข้อมูลจากไฟล์ CSV
 void readCSV(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -30,7 +23,6 @@ void readCSV(const char *filename) {
     char line[512];
     projectCount = 0;
 
-    // ข้ามบรรทัด header
     fgets(line, sizeof(line), file);
 
     while (fgets(line, sizeof(line), file) && projectCount < MAX_PROJECTS) {
@@ -44,7 +36,13 @@ void readCSV(const char *filename) {
         if (token) strcpy(endDates[projectCount], token);
 
         token = strtok(NULL, "\n");
-        if (token) strcpy(evaluationResults[projectCount], token);
+        if (token) {
+            size_t len = strlen(token);
+            if (len > 0 && token[len-1] == '\r') {
+                token[len-1] = '\0';
+            }
+            strcpy(evaluationResults[projectCount], token);
+        }
 
         projectCount++;
     }
@@ -52,7 +50,6 @@ void readCSV(const char *filename) {
     printf("โหลดข้อมูลจากไฟล์ %s สำเร็จ! จำนวน %d โครงการ\n", filename, projectCount);
 }
 
-// เขียนข้อมูลลงไฟล์ CSV
 void writeCSV(const char *filename) {
     FILE *file = fopen(filename, "w");
     if (!file) {
@@ -69,7 +66,6 @@ void writeCSV(const char *filename) {
     printf("บันทึกข้อมูลลงไฟล์ %s สำเร็จ!\n", filename);
 }
 
-// เพิ่มข้อมูลโครงการใหม่
 void addProject() {
     if (projectCount >= MAX_PROJECTS) {
         printf("ข้อมูลเต็มแล้ว\n");
@@ -81,10 +77,10 @@ void addProject() {
     printf("ชื่อโครงการ: ");
     scanf(" %[^\n]", projectNames[projectCount]);
 
-    printf("วันที่เริ่ม (YYYY-MM-DD): ");
+    printf("วันที่เริ่ม (DD-MM-YYYY): ");
     scanf(" %[^\n]", startDates[projectCount]);
 
-    printf("วันที่สิ้นสุด (YYYY-MM-DD): ");
+    printf("วันที่สิ้นสุด (DD-MM-YYYY): ");
     scanf(" %[^\n]", endDates[projectCount]);
 
     printf("ผลการประเมิน: ");
@@ -94,7 +90,6 @@ void addProject() {
     printf("เพิ่มข้อมูลสำเร็จ!\n");
 }
 
-// แสดงข้อมูลทั้งหมด
 void showAllProjects() {
     if (projectCount == 0) {
         printf("ยังไม่มีข้อมูล\n");
@@ -107,7 +102,6 @@ void showAllProjects() {
     }
 }
 
-// ค้นหาข้อมูลด้วยชื่อโครงการหรือผลการประเมิน
 void searchProject() {
     char keyword[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการหรือผลการประเมินที่ต้องการค้นหา: ");
@@ -126,7 +120,6 @@ void searchProject() {
     }
 }
 
-// อัปเดตข้อมูลโครงการตามชื่อ
 void updateProject() {
     char name[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการแก้ไข: ");
@@ -156,7 +149,6 @@ void updateProject() {
     }
 }
 
-// ลบข้อมูลโครงการตามชื่อ
 void deleteProject() {
     char name[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการลบ: ");
@@ -182,7 +174,6 @@ void deleteProject() {
     }
 }
 
-// แสดงเมนู
 void displayMenu() {
     printf("\n==== เมนูหลัก ====\n");
     printf("1. อ่านข้อมูลจากไฟล์ CSV\n");
@@ -196,13 +187,22 @@ void displayMenu() {
 }
 
 int main() {
+    setlocale(LC_ALL, "Thai");
+    SetConsoleOutputCP(65001);
+    SetConsoleCP(65001); 
+
     int choice;
     char filename[] = "projects.csv";
 
     while (1) {
         displayMenu();
         printf("เลือกเมนู: ");
-        scanf("%d", &choice);
+        
+        if (scanf("%d", &choice) != 1) {
+            while (getchar() != '\n');
+            printf("กรุณาใส่ตัวเลขเท่านั้น!\n");
+            continue;
+        }
 
         switch (choice) {
             case 1:
