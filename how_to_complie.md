@@ -1,5 +1,21 @@
-วิธีcomplie ถ้าเกิดrunไม่ได้
-พิม chcp 65001 เพื่อ activate code ก่อน
-แล้วพิม .\test.exe สำหรับไฟล์testเพื่อเป็นการrun
-แล้วพิม .\end_to_end.exe สำหรับไฟล์testเพื่อเป็นการrun
-แล้วพิม .\unit_test.exe สำหรับไฟล์testเพื่อเป็นการrun
+# How to Compile and Run
+
+To compile the programs, you can use GCC. Open your terminal in the project directory and run the following commands:
+
+## Compile
+
+```shell
+gcc -o test.exe test.c
+gcc -o unit_test.exe unit_test.c
+gcc -o end_to_end_test.exe end_to_end_test.c
+```
+
+## Run
+
+To run the compiled programs, use these commands:
+
+```shell
+.\test.exe
+.\unit_test.exe
+.\end_to_end_test.exe
+```

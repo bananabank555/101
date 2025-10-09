@@ -1,13 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <windows.h>
-#include <locale.h>
-
 #define MAX_PROJECTS 100
 #define MAX_LEN 100
 
-// ใช้ struct เพื่อจัดกลุ่มข้อมูลให้เป็นระเบียบและจัดการง่ายขึ้น
 typedef struct {
     char name[MAX_LEN];
     char startDate[MAX_LEN];
@@ -21,7 +17,8 @@ int projectCount = 0;
 void readCSV(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        printf("ไม่สามารถเปิดไฟล์ %s\n", filename);
+        printf("Cannot open file %s\n", filename);
+        return;
     }
 
     char line[512];
@@ -31,10 +28,9 @@ void readCSV(const char *filename) {
 
     while (fgets(line, sizeof(line), file) && projectCount < MAX_PROJECTS) {
         char *token = strtok(line, ",");
-        // ใช้ strncpy เพื่อความปลอดภัย ป้องกัน Buffer Overflow
         if (token) {
             strncpy(projects[projectCount].name, token, MAX_LEN - 1);
-            projects[projectCount].name[MAX_LEN - 1] = '\0'; // Ensure null-termination
+            projects[projectCount].name[MAX_LEN - 1] = '\0';
         }
 
         token = strtok(NULL, ",");
@@ -60,13 +56,13 @@ void readCSV(const char *filename) {
         projectCount++;
     }
     fclose(file);
-    printf("โหลดข้อมูลจากไฟล์ %s สำเร็จ! จำนวน %d โครงการ\n", filename, projectCount);
+    printf("Loaded data from %s successfully! %d projects\n", filename, projectCount);
 }
 
 void writeCSV(const char *filename) {
     FILE *file = fopen(filename, "w");
     if (!file) {
-        printf("ไม่สามารถเขียนไฟล์ %s\n", filename);
+        printf("Cannot write to file %s\n", filename);
         return;
     }
 
@@ -76,58 +72,55 @@ void writeCSV(const char *filename) {
     }
 
     fclose(file);
-    printf("บันทึกข้อมูลลงไฟล์ %s สำเร็จ!\n", filename);
+    printf("Saved data to %s successfully!\n", filename);
 }
 
 void addProject() {
     if (projectCount >= MAX_PROJECTS) {
-        printf("ข้อมูลเต็มแล้ว\n");
+        printf("Project limit reached.\n");
         return;
     }
 
-    // ใช้ Buffer และ fgets เพื่อการรับ Input ที่ปลอดภัย
-    char buffer[MAX_LEN * 2]; // Buffer ขนาดใหญ่ขึ้นเล็กน้อยเพื่อตรวจจับ input ที่ยาวเกิน
+    char buffer[MAX_LEN];
 
-    printf("เพิ่มข้อมูลโครงการใหม่:\n");
+    printf("Add new project:\n");
 
-    printf("ชื่อโครงการ: ");
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    printf("Project Name: ");
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); return; }
     buffer[strcspn(buffer, "\r\n")] = '\0';
     strncpy(projects[projectCount].name, buffer, MAX_LEN - 1);
     projects[projectCount].name[MAX_LEN - 1] = '\0';
 
-    printf("วันที่เริ่ม (DD-MM-YYYY): ");
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    printf("Start Date (DD-MM-YYYY): ");
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); return; }
     buffer[strcspn(buffer, "\r\n")] = '\0';
     strncpy(projects[projectCount].startDate, buffer, MAX_LEN - 1);
     projects[projectCount].startDate[MAX_LEN - 1] = '\0';
 
-    printf("วันที่สิ้นสุด (DD-MM-YYYY): ");
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    printf("End Date (DD-MM-YYYY): ");
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); return; }
     buffer[strcspn(buffer, "\r\n")] = '\0';
     strncpy(projects[projectCount].endDate, buffer, MAX_LEN - 1);
     projects[projectCount].endDate[MAX_LEN - 1] = '\0';
 
-    printf("ผลการประเมิน: ");
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    printf("Evaluation Result: ");
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); return; }
     buffer[strcspn(buffer, "\r\n")] = '\0';
     strncpy(projects[projectCount].evaluationResult, buffer, MAX_LEN - 1);
     projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
 
-    // ตรวจสอบว่าชื่อโครงการซ้ำหรือไม่ (ตัวอย่าง business logic เพิ่มเติม)
-    // for (int i = 0; i < projectCount; i++) { ... }
     
     projectCount++;
-    printf("เพิ่มข้อมูลสำเร็จ!\n");
+    printf("Project added successfully!\n");
 }
 
 void showAllProjects() {
     if (projectCount == 0) {
-        printf("ยังไม่มีข้อมูล\n");
+        printf("No projects to display.\n");
         return;
     }
 
-    printf("\n==== ข้อมูลโครงการทั้งหมด ====\n");
+    printf("\n==== All Project Data ====\n");
     for (int i = 0; i < projectCount; i++) {
         printf("%d. %s | %s - %s | %s\n", i + 1, projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
     }
@@ -135,123 +128,117 @@ void showAllProjects() {
 
 void searchProject() {
     char keyword[MAX_LEN];
-    printf("กรุณากรอกชื่อโครงการหรือผลการประเมินที่ต้องการค้นหา: ");
-    if (fgets(keyword, sizeof(keyword), stdin) == NULL) return;
+    printf("Enter project name or evaluation result to search: ");
+    if (fgets(keyword, sizeof(keyword), stdin) == NULL) { printf("Error reading input.\n"); return; }
     keyword[strcspn(keyword, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        // strstr เป็น case-sensitive, ถ้าต้องการไม่สน case ต้องใช้ strcasestr หรือเขียนฟังก์ชันเอง
         if (strstr(projects[i].name, keyword) != NULL || strstr(projects[i].evaluationResult, keyword) != NULL) {
             if (!found) {
-                printf("\nผลการค้นหา:\n");
+                printf("\nSearch Results:\n");
             }
-            printf("%d. %s | %s - %s | %s\n", i + 1, projects[i].name, projects[i].endDate, projects[i].endDate, projects[i].evaluationResult);
+            printf("%d. %s | %s - %s | %s\n", i + 1, projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
             found = 1;
         }
     }
 
     if (!found) {
-        printf("ไม่พบข้อมูลที่ตรงกับคำค้นหา\n");
+        printf("No matching projects found.\n");
     }
 }
 
 void updateProject() {
     char name[MAX_LEN];
-    printf("กรุณากรอกชื่อโครงการที่ต้องการแก้ไข: ");
-    if (fgets(name, sizeof(name), stdin) == NULL) return;
+    printf("Enter the name of the project to edit: ");
+    if (fgets(name, sizeof(name), stdin) == NULL) { printf("Error reading input.\n"); return; }
     name[strcspn(name, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
         if (strcmp(projects[i].name, name) == 0) {
             found = 1;
-            printf("แก้ไขข้อมูลโครงการ: %s\n", projects[i].name);
+            printf("Editing project: %s\n", projects[i].name);
 
             char buffer[MAX_LEN];
 
-            printf("วันที่เริ่มใหม่ (ปัจจุบัน: %s): ", projects[i].startDate);
-            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            printf("New start date (current: %s): ", projects[i].startDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); break; }
             buffer[strcspn(buffer, "\r\n")] = '\0';
             strncpy(projects[i].startDate, buffer, MAX_LEN - 1);
+            projects[i].startDate[MAX_LEN - 1] = '\0';
 
-            printf("วันที่สิ้นสุดใหม่ (ปัจจุบัน: %s): ", projects[i].endDate);
-            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            printf("New end date (current: %s): ", projects[i].endDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); break; }
             buffer[strcspn(buffer, "\r\n")] = '\0';
             strncpy(projects[i].endDate, buffer, MAX_LEN - 1);
+            projects[i].endDate[MAX_LEN - 1] = '\0';
 
-            printf("ผลการประเมินใหม่ (ปัจจุบัน: %s): ", projects[i].evaluationResult);
-            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            printf("New evaluation result (current: %s): ", projects[i].evaluationResult);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("Error reading input.\n"); break; }
             buffer[strcspn(buffer, "\r\n")] = '\0';
             strncpy(projects[i].evaluationResult, buffer, MAX_LEN - 1);
+            projects[i].evaluationResult[MAX_LEN - 1] = '\0';
 
-            // หมายเหตุ: โค้ดนี้ยังไม่รองรับชื่อโครงการซ้ำ
-            printf("แก้ไขข้อมูลสำเร็จ!\n");
+            printf("Project updated successfully!\n");
             break;
         }
     }
     if (!found) {
-        printf("ไม่พบชื่อโครงการที่ระบุ\n");
+        printf("Project with the specified name not found.\n");
     }
 }
 
 void deleteProject() {
     char name[MAX_LEN];
-    printf("กรุณากรอกชื่อโครงการที่ต้องการลบ: ");
-    if (fgets(name, sizeof(name), stdin) == NULL) return;
+    printf("Enter the name of the project to delete: ");
+    if (fgets(name, sizeof(name), stdin) == NULL) { printf("Error reading input.\n"); return; }
     name[strcspn(name, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
         if (strcmp(projects[i].name, name) == 0) {
             found = 1;
-            // เลื่อนข้อมูลในอาร์เรย์ (struct assignment ทำให้ง่ายขึ้น)
             for (int j = i; j < projectCount - 1; j++) {
                 projects[j] = projects[j+1];
             }
             projectCount--;
-            printf("ลบข้อมูลสำเร็จ!\n");
+            printf("Project deleted successfully!\n");
             break;
         }
     }
     if (!found) {
-        printf("ไม่พบชื่อโครงการที่ระบุ\n");
+        printf("Project with the specified name not found.\n");
     }
 }
 
 void displayMenu() {
-    printf("\n==== เมนูหลัก ====\n");
-    printf("1. อ่านข้อมูลจากไฟล์ CSV\n");
-    printf("2. เพิ่มข้อมูลโครงการใหม่\n");
-    printf("3. ค้นหาข้อมูลโครงการ\n");
-    printf("4. แก้ไขข้อมูลโครงการ\n");
-    printf("5. ลบข้อมูลโครงการ\n");
-    printf("6. แสดงข้อมูลทั้งหมด\n");
-    printf("7. บันทึกข้อมูลลงไฟล์ CSV\n");
-    printf("8. ออกจากโปรแกรม\n");
+    printf("\n==== Main Menu ====\n");
+    printf("1. Read data from CSV file\n");
+    printf("2. Add new project\n");
+    printf("3. Search for a project\n");
+    printf("4. Edit a project\n");
+    printf("5. Delete a project\n");
+    printf("6. Show all projects\n");
+    printf("7. Save data to CSV file\n");
+    printf("8. Exit program\n");
 }
 
 int main() {
-    system("chcp 65001");
-    setlocale(LC_ALL, "Thai"); 
-    SetConsoleOutputCP(65001); 
-    SetConsoleCP(65001);       
-
     int choice;
     char filename[] = "projects.csv";
 
     while (1) {
         displayMenu();
-        printf("เลือกเมนู: ");
+        printf("Enter your choice: ");
         
-        // ปรับปรุงการรับเมนูให้ดีขึ้น
         if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n'); // เคลียร์ input buffer ที่ผิดพลาด
-            printf("กรุณาใส่ตัวเลขเท่านั้น\n");
+            // Clear the invalid input from the buffer
+            while (getchar() != '\n');
+            printf("Invalid input. Please enter a number.\n");
             continue;
         }
-        // เคลียร์ \n ที่เหลือจากการกด Enter หลังใส่ตัวเลข
-        while (getchar() != '\n');
+        while (getchar() != '\n'); // Consume the rest of the line
 
         switch (choice) {
             case 1:
@@ -276,10 +263,10 @@ int main() {
                 writeCSV(filename);
                 break;
             case 8:
-                printf("ออกจากโปรแกรม...\n");
+                printf("Exiting program...\n");
                 return 0;
             default:
-                printf("เลือกเมนูไม่ถูกต้อง\n");
+                printf("Invalid choice. Please try again.\n");
         }
     }
 
