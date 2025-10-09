@@ -187,9 +187,16 @@ void displayMenu() {
 }
 
 int main() {
+<<<<<<< HEAD
     setlocale(LC_ALL, "Thai");
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001); 
+=======
+    system("chcp 65001");
+    setlocale(LC_ALL, "Thai"); 
+    SetConsoleOutputCP(65001); 
+    SetConsoleCP(65001);       
+>>>>>>> ecedb2f080b2257eada6f8dee3c783b7d7412727
 
     int choice;
     char filename[] = "projects.csv";
@@ -200,7 +207,11 @@ int main() {
         
         if (scanf("%d", &choice) != 1) {
             while (getchar() != '\n');
+<<<<<<< HEAD
             printf("กรุณาใส่ตัวเลขเท่านั้น!\n");
+=======
+            printf("กรุณาใส่ตัวเลขเท่านั้น\n");
+>>>>>>> ecedb2f080b2257eada6f8dee3c783b7d7412727
             continue;
         }
 
