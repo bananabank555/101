@@ -3,15 +3,37 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <locale.h>
+#include <ctype.h>
 
 #define MAX_PROJECTS 100
 #define MAX_LEN 100
+typedef struct {
+    char name[MAX_LEN];
+    char startDate[MAX_LEN];
+    char endDate[MAX_LEN];
+    char evaluationResult[MAX_LEN];
+} Project;
 
-char projectNames[MAX_PROJECTS][MAX_LEN];
-char startDates[MAX_PROJECTS][MAX_LEN];
-char endDates[MAX_PROJECTS][MAX_LEN];
-char evaluationResults[MAX_PROJECTS][MAX_LEN];
-int projectCount = 0;
+Project projects[MAX_PROJECTS]; 
+int projectCount = 0;           
+
+int isValidDate(const char* dateStr) {
+    int day, month, year;
+    if (sscanf(dateStr, "%d-%d-%d", &day, &month, &year) != 3) {
+        return 0;
+    }
+
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1) {
+        return 0;
+    }
+
+    int daysInMonth[] = { 0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    if (day > daysInMonth[month]) {
+        return 0;
+    }
+
+    return 1;
+}
 
 void readCSV(const char *filename) {
     FILE *file = fopen(filename, "r");
@@ -27,23 +49,24 @@ void readCSV(const char *filename) {
 
     while (fgets(line, sizeof(line), file) && projectCount < MAX_PROJECTS) {
         char *token = strtok(line, ",");
-        if (token) strcpy(projectNames[projectCount], token);
+        if (token) strncpy(projects[projectCount].name, token, MAX_LEN - 1);
+        projects[projectCount].name[MAX_LEN - 1] = '\0';
 
         token = strtok(NULL, ",");
-        if (token) strcpy(startDates[projectCount], token);
+        if (token) strncpy(projects[projectCount].startDate, token, MAX_LEN - 1);
+        projects[projectCount].startDate[MAX_LEN - 1] = '\0';
 
         token = strtok(NULL, ",");
-        if (token) strcpy(endDates[projectCount], token);
+        if (token) strncpy(projects[projectCount].endDate, token, MAX_LEN - 1);
+        projects[projectCount].endDate[MAX_LEN - 1] = '\0';
 
-        token = strtok(NULL, "\n");
+        token = strtok(NULL, "\n"); 
         if (token) {
             size_t len = strlen(token);
-            if (len > 0 && token[len-1] == '\r') {
-                token[len-1] = '\0';
-            }
-            strcpy(evaluationResults[projectCount], token);
+            if (len > 0 && (token[len-1] == '\r' || token[len-1] == '\n')) token[len-1] = '\0';
+            strncpy(projects[projectCount].evaluationResult, token, MAX_LEN - 1);
+            projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
         }
-
         projectCount++;
     }
     fclose(file);
@@ -59,7 +82,7 @@ void writeCSV(const char *filename) {
 
     fprintf(file, "ProjectName,StartDate,EndDate,EvaluationResult\n");
     for (int i = 0; i < projectCount; i++) {
-        fprintf(file, "%s,%s,%s,%s\n", projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        fprintf(file, "%s,%s,%s,%s\n", projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
     }
 
     fclose(file);
@@ -73,19 +96,31 @@ void addProject() {
     }
 
     printf("เพิ่มข้อมูลโครงการใหม่:\n");
+    char buffer[MAX_LEN];
 
     printf("ชื่อโครงการ: ");
-    scanf(" %[^\n]", projectNames[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0'; 
+    strncpy(projects[projectCount].name, buffer, MAX_LEN - 1);
+    projects[projectCount].name[MAX_LEN - 1] = '\0';
 
     printf("วันที่เริ่ม (DD-MM-YYYY): ");
-    scanf(" %[^\n]", startDates[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].startDate, buffer, MAX_LEN - 1);
+    projects[projectCount].startDate[MAX_LEN - 1] = '\0';
 
     printf("วันที่สิ้นสุด (DD-MM-YYYY): ");
-    scanf(" %[^\n]", endDates[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].endDate, buffer, MAX_LEN - 1);
+    projects[projectCount].endDate[MAX_LEN - 1] = '\0';
 
     printf("ผลการประเมิน: ");
-    scanf(" %[^\n]", evaluationResults[projectCount]);
-
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].evaluationResult, buffer, MAX_LEN - 1);
+    projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
     projectCount++;
     printf("เพิ่มข้อมูลสำเร็จ!\n");
 }
@@ -98,19 +133,24 @@ void showAllProjects() {
 
     printf("\n==== ข้อมูลโครงการทั้งหมด ====\n");
     for (int i = 0; i < projectCount; i++) {
-        printf("%d. %s | %s - %s | %s\n", i+1, projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        printf("%d. %s | %s - %s | %s\n", i+1, projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
     }
 }
 
 void searchProject() {
     char keyword[MAX_LEN];
+    char buffer[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการหรือผลการประเมินที่ต้องการค้นหา: ");
-    scanf(" %[^\n]", keyword);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(keyword, buffer, MAX_LEN - 1);
+    keyword[MAX_LEN - 1] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strstr(projectNames[i], keyword) != NULL || strstr(evaluationResults[i], keyword) != NULL) {
-            printf("%d. %s | %s - %s | %s\n", i+1, projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        if (strcasestr_custom(projects[i].name, keyword) != NULL || strcasestr_custom(projects[i].evaluationResult, keyword) != NULL) {
+
+            printf("%d. %s | %s - %s | %s\n", i+1, projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
             found = 1;
         }
     }
@@ -122,23 +162,36 @@ void searchProject() {
 
 void updateProject() {
     char name[MAX_LEN];
+    char buffer[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการแก้ไข: ");
-    scanf(" %[^\n]", name);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(name, buffer, MAX_LEN - 1);
+    name[MAX_LEN - 1] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strcmp(projectNames[i], name) == 0) {
+        if (strcmp(projects[i].name, name) == 0) {
             found = 1;
-            printf("แก้ไขข้อมูลโครงการ: %s\n", projectNames[i]);
+            printf("แก้ไขข้อมูลโครงการ: %s\n", projects[i].name);
 
-            printf("วันที่เริ่มใหม่ (ปัจจุบัน: %s): ", startDates[i]);
-            scanf(" %[^\n]", startDates[i]);
+            printf("วันที่เริ่มใหม่ (ปัจจุบัน: %s): ", projects[i].startDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].startDate, buffer, MAX_LEN - 1);
+            projects[i].startDate[MAX_LEN - 1] = '\0';
 
-            printf("วันที่สิ้นสุดใหม่ (ปัจจุบัน: %s): ", endDates[i]);
-            scanf(" %[^\n]", endDates[i]);
+            printf("วันที่สิ้นสุดใหม่ (ปัจจุบัน: %s): ", projects[i].endDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].endDate, buffer, MAX_LEN - 1);
+            projects[i].endDate[MAX_LEN - 1] = '\0';
 
-            printf("ผลการประเมินใหม่ (ปัจจุบัน: %s): ", evaluationResults[i]);
-            scanf(" %[^\n]", evaluationResults[i]);
+            printf("ผลการประเมินใหม่ (ปัจจุบัน: %s): ", projects[i].evaluationResult);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].evaluationResult, buffer, MAX_LEN - 1);
+            projects[i].evaluationResult[MAX_LEN - 1] = '\0';
 
             printf("แก้ไขข้อมูลสำเร็จ!\n");
             break;
@@ -151,18 +204,19 @@ void updateProject() {
 
 void deleteProject() {
     char name[MAX_LEN];
+    char buffer[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการลบ: ");
-    scanf(" %[^\n]", name);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) { printf("เกิดข้อผิดพลาดในการอ่านข้อมูล.\n"); return; }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(name, buffer, MAX_LEN - 1);
+    name[MAX_LEN - 1] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strcmp(projectNames[i], name) == 0) {
+        if (strcmp(projects[i].name, name) == 0) {
             found = 1;
             for (int j = i; j < projectCount - 1; j++) {
-                strcpy(projectNames[j], projectNames[j+1]);
-                strcpy(startDates[j], startDates[j+1]);
-                strcpy(endDates[j], endDates[j+1]);
-                strcpy(evaluationResults[j], evaluationResults[j+1]);
+                projects[j] = projects[j+1];
             }
             projectCount--;
             printf("ลบข้อมูลสำเร็จ!\n");
@@ -184,9 +238,168 @@ void displayMenu() {
     printf("6. แสดงข้อมูลทั้งหมด\n");
     printf("7. บันทึกข้อมูลลงไฟล์ CSV\n");
     printf("8. ออกจากโปรแกรม\n");
+    printf("9. รัน Unit Tests (ทดสอบการทำงานของฟังก์ชัน)\n");
 }
 
-int runApp() {
+void resetState() {
+    projectCount = 0;
+}
+
+void addTestProject(const char* name, const char* start, const char* end, const char* result) {
+    if (projectCount < MAX_PROJECTS) {
+        strncpy(projects[projectCount].name, name, MAX_LEN - 1); projects[projectCount].name[MAX_LEN - 1] = '\0';
+        strncpy(projects[projectCount].startDate, start, MAX_LEN - 1); projects[projectCount].startDate[MAX_LEN - 1] = '\0';
+        strncpy(projects[projectCount].endDate, end, MAX_LEN - 1); projects[projectCount].endDate[MAX_LEN - 1] = '\0';
+        strncpy(projects[projectCount].evaluationResult, result, MAX_LEN - 1); projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
+        projectCount++;
+    }
+}
+
+char* strcasestr_custom(const char* haystack, const char* needle) {
+    if (!*needle) return (char*)haystack; 
+    for (; *haystack; ++haystack) {
+        if (tolower((unsigned char)*haystack) == tolower((unsigned char)*needle)) {
+            const char* h, * n;
+            for (h = haystack, n = needle; *h && *n && tolower((unsigned char)*h) == tolower((unsigned char)*n); ++h, ++n);
+            if (!*n) return (char*)haystack; 
+        }
+    }
+    return NULL;
+}
+
+void testCSV_IO(const char* testFilename) {
+    printf("\n--- Test: การอ่าน/เขียนไฟล์ CSV ---\n");
+    resetState();
+
+    FILE *tempFile = fopen(testFilename, "w");
+    if (!tempFile) {
+        printf("[FAIL] ไม่สามารถสร้างไฟล์ทดสอบ: %s\n", testFilename);
+        return;
+    }
+    fprintf(tempFile, "ProjectName,StartDate,EndDate,EvaluationResult\n");
+    fprintf(tempFile, "Project Alpha,01-01-2024,31-01-2024,Good\n");
+    fprintf(tempFile, "Project Beta,15-02-2024,28-02-2024,Excellent\n");
+    fclose(tempFile);
+
+    readCSV(testFilename);
+
+    if (projectCount == 2) {
+        printf("[PASS] readCSV: โหลดจำนวนโครงการถูกต้อง (%d).\n", projectCount);
+    } else {
+        printf("[FAIL] readCSV: คาดหวัง 2 โครงการ, ได้ %d.\n", projectCount);
+    }
+
+    if (strcmp(projects[0].name, "Project Alpha") == 0 &&
+        strcmp(projects[0].evaluationResult, "Good") == 0) {
+        printf("[PASS] readCSV: ตรวจสอบข้อมูล (Project Alpha) ผ่าน.\n");
+    } else {
+        printf("[FAIL] readCSV: ตรวจสอบข้อมูล (Project Alpha) ไม่ผ่าน. Got: %s, %s\n", projects[0].name, projects[0].evaluationResult);
+    }
+    
+    const char* writeFilename = "temp_output.csv";
+    writeCSV(writeFilename);
+
+    resetState();
+    readCSV(writeFilename); 
+    if (projectCount == 2 && strcmp(projects[1].name, "Project Beta") == 0 && strcmp(projects[1].evaluationResult, "Excellent") == 0) {
+        printf("[PASS] writeCSV: เนื้อหาไฟล์ถูกเขียนและตรวจสอบผ่าน.\n");
+    } else {
+        printf("[FAIL] writeCSV: การตรวจสอบไฟล์ที่เขียนล้มเหลว. projectCount: %d, project name: %s, eval: %s\n", projectCount, projects[1].name, projects[1].evaluationResult);
+    }
+    
+    remove(testFilename);
+    remove(writeFilename);
+}
+
+void testDeleteLogic() {
+    printf("\n--- Test: ตรรกะการลบข้อมูล (Delete Logic) ---\n");
+    resetState();
+    addTestProject("P1", "d1", "d2", "r1");
+    addTestProject("P2_to_delete", "d3", "d4", "r2");
+    addTestProject("P3", "d5", "d6", "r3");
+    
+    int indexToDelete = -1;
+    for (int i = 0; i < projectCount; i++) {
+        if (strcmp(projects[i].name, "P2_to_delete") == 0) {
+            indexToDelete = i;
+            break;
+        }
+    }
+    
+    if (indexToDelete != -1) {
+        for (int j = indexToDelete; j < projectCount - 1; j++) { projects[j] = projects[j+1]; } 
+        projectCount--;
+        
+        if (projectCount == 2) {
+            printf("[PASS] Delete Logic: จำนวนโครงการถูกต้องหลังการลบ (%d).\n", projectCount);
+        } else {
+            printf("[FAIL] Delete Logic: จำนวนโครงการไม่ถูกต้อง คาดหวัง 2, ได้ %d.\n", projectCount);
+        }
+        
+        if (strcmp(projects[1].name, "P3") == 0) {
+            printf("[PASS] Delete Logic: การเลื่อนข้อมูลในอาร์เรย์สำเร็จ (P3 อยู่ที่ดัชนี 1).\n");
+        } else {
+            printf("[FAIL] Delete Logic: การเลื่อนข้อมูลล้มเหลว คาดหวัง P3, ได้ %s.\n", projects[1].name);
+        }
+    } else {
+        printf("[FAIL] Delete Logic: ไม่พบโครงการ P2_to_delete.\n");
+    }
+    
+    resetState();
+}
+
+void testUpdateLogic() {
+    printf("\n--- Test: ตรรกะการแก้ไขข้อมูล (Update Logic) ---\n");
+    resetState();
+    addTestProject("Project X", "01-01", "10-01", "Pending");
+    
+    int found = 0;
+    for (int i = 0; i < projectCount; i++) {
+        if (strcmp(projects[i].name, "Project X") == 0) {
+            found = 1;
+            strncpy(projects[i].startDate, "05-01", MAX_LEN - 1); projects[i].startDate[MAX_LEN - 1] = '\0';
+            strncpy(projects[i].evaluationResult, "Completed", MAX_LEN - 1); projects[i].evaluationResult[MAX_LEN - 1] = '\0';
+            break;
+        }
+    }
+
+    if (found) {
+        if (strcmp(projects[0].startDate, "05-01") == 0 && strcmp(projects[0].evaluationResult, "Completed") == 0) {
+            printf("[PASS] Update Logic: ข้อมูล Project X ได้รับการแก้ไขสำเร็จ.\n");
+        } else {
+            printf("[FAIL] Update Logic: ข้อมูล Project X แก้ไขไม่สำเร็จ. Got: %s, %s\n", projects[0].startDate, projects[0].evaluationResult);
+        }
+    } else {
+        printf("[FAIL] Update Logic: ไม่พบ Project X.\n");
+    }
+    
+    resetState();
+}
+
+
+void runTests() {
+    printf("\n#################################\n");
+    printf("### เริ่มการทดสอบ Unit Tests ###\n");
+    printf("#################################\n");
+
+    testCSV_IO("test_projects.csv"); 
+
+    testDeleteLogic();
+    
+    testUpdateLogic();
+
+    printf("\n#################################\n");
+    printf("### เสร็จสิ้นการทดสอบทั้งหมด ###\n");
+    printf("#################################\n");
+}
+
+
+int main() {
+    system("chcp 65001");
+    setlocale(LC_ALL, "Thai"); 
+    SetConsoleOutputCP(65001); 
+    SetConsoleCP(65001);
+
     int choice;
     char filename[] = "projects.csv";
 
@@ -195,12 +408,10 @@ int runApp() {
         printf("เลือกเมนู: ");
         
         if (scanf("%d", &choice) != 1) {
-             if (feof(stdin)) {
-                 return 0; 
-             }
-             while (getchar() != '\n'); 
-             printf("กรุณาใส่ตัวเลขเท่านั้น\n");
-             continue;
+            while (getchar() != '\n');
+            printf("กรุณาใส่ตัวเลขเท่านั้น\n");
+            while (getchar() != '\n'); 
+            continue;
         }
 
         switch (choice) {
@@ -228,166 +439,11 @@ int runApp() {
             case 8:
                 printf("ออกจากโปรแกรม...\n");
                 return 0;
+            case 9:
+                runTests();
+                break;
             default:
                 printf("เลือกเมนูไม่ถูกต้อง\n");
-        }
-    }
-}
-
-int checkOutput(const char* outputFilename, const char* expectedString, const char* testCaseName) {
-    FILE *file = fopen(outputFilename, "r");
-    if (!file) {
-        printf("[FAIL] %s: ไม่สามารถเปิดไฟล์ Output เพื่อตรวจสอบ\n", testCaseName);
-        return 0;
-    }
-
-    char line[1024];
-    while (fgets(line, sizeof(line), file)) {
-        if (strstr(line, expectedString)) {
-            fclose(file);
-            printf("[PASS] %s: พบข้อความที่คาดหวัง '%s'\n", testCaseName, expectedString);
-            return 1;
-        }
-    }
-
-    fclose(file);
-    printf("[FAIL] %s: ไม่พบข้อความที่คาดหวัง '%s'\n", testCaseName, expectedString);
-    return 0;
-}
-
-void runEndToEndTest() {
-    printf("\n#################################\n");
-    printf("### เริ่ม End-to-End Test ###\n");
-    printf("#################################\n");
-
-    const char* inputFilename = "e2e_input.txt";
-    const char* outputFilename = "e2e_output.txt";
-    const char* dataFilename = "e2e_data.csv";
-    
-    FILE *inputFile = fopen(inputFilename, "w");
-    if (!inputFile) {
-        printf("[ERROR] ไม่สามารถสร้างไฟล์ Input ได้\n");
-        return;
-    }
-
-    fprintf(inputFile, "2\n");
-    fprintf(inputFile, "โครงการ Alpha\n");
-    fprintf(inputFile, "01-01-2024\n");
-    fprintf(inputFile, "31-01-2024\n");
-    fprintf(inputFile, "Good\n");
-
-    fprintf(inputFile, "2\n");
-    fprintf(inputFile, "โครงการ Beta\n");
-    fprintf(inputFile, "01-02-2024\n");
-    fprintf(inputFile, "28-02-2024\n");
-    fprintf(inputFile, "Pending\n");
-
-    fprintf(inputFile, "6\n");
-
-    fprintf(inputFile, "3\n");
-    fprintf(inputFile, "Alpha\n");
-
-    fprintf(inputFile, "4\n");
-    fprintf(inputFile, "โครงการ Beta\n");
-    fprintf(inputFile, "01-02-2024\n");
-    fprintf(inputFile, "31-03-2024\n");
-    fprintf(inputFile, "Completed\n");
-
-    fprintf(inputFile, "5\n");
-    fprintf(inputFile, "โครงการ Alpha\n");
-
-    fprintf(inputFile, "6\n");
-    
-    fprintf(inputFile, "7\n");
-
-    fprintf(inputFile, "8\n");
-
-    fclose(inputFile);
-
-    freopen(inputFilename, "r", stdin);
-    freopen(outputFilename, "w", stdout);
-    
-    system("chcp 65001");
-    setlocale(LC_ALL, "Thai"); 
-    SetConsoleOutputCP(65001); 
-    SetConsoleCP(65001);
-
-    runApp();
-
-    fclose(stdin);
-    fclose(stdout);
-    freopen("CON", "r", stdin);
-    freopen("CON", "w", stdout);
-
-    printf("\n==== ผลลัพธ์ End-to-End Test ====\n");
-    
-    checkOutput(outputFilename, "เพิ่มข้อมูลสำเร็จ!", "Test 1 (Add)");
-    
-    checkOutput(outputFilename, "โครงการ Alpha | 01-01-2024 - 31-01-2024 | Good", "Test 2 (Search)");
-
-    checkOutput(outputFilename, "แก้ไขข้อมูลสำเร็จ!", "Test 3 (Update - Message)");
-    
-    checkOutput(outputFilename, "ลบข้อมูลสำเร็จ!", "Test 4 (Delete)");
-    
-    checkOutput(outputFilename, "1. โครงการ Beta | 01-02-2024 - 31-03-2024 | Completed", "Test 5 (Final Data Check)");
-    
-    checkOutput(outputFilename, "บันทึกข้อมูลลงไฟล์ e2e_data.csv สำเร็จ!", "Test 6 (Write CSV)");
-
-    remove(inputFilename);
-    remove(outputFilename);
-    remove(dataFilename);
-
-    printf("\n#################################\n");
-    printf("### End-to-End Test เสร็จสิ้น ###\n");
-    printf("#################################\n");
-}
-
-
-int main() {
-    system("chcp 65001");
-    setlocale(LC_ALL, "Thai"); 
-    SetConsoleOutputCP(65001); 
-    SetConsoleCP(65001);
-
-    int choice;
-
-    while (1) {
-        printf("\n==== เมนูหลัก ====\n");
-        printf("1. อ่านข้อมูลจากไฟล์ CSV\n");
-        printf("2. เพิ่มข้อมูลโครงการใหม่\n");
-        printf("3. ค้นหาข้อมูลโครงการ\n");
-        printf("4. แก้ไขข้อมูลโครงการ\n");
-        printf("5. ลบข้อมูลโครงการ\n");
-        printf("6. แสดงข้อมูลทั้งหมด\n");
-        printf("7. บันทึกข้อมูลลงไฟล์ CSV\n");
-        printf("8. ออกจากโปรแกรม\n");
-        printf("9. รัน End-to-End Test (E2E)\n");
-        printf("เลือกเมนู: ");
-        
-        if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n');
-            printf("กรุณาใส่ตัวเลขเท่านั้น\n");
-            continue;
-        }
-
-        if (choice == 9) {
-            runEndToEndTest();
-        } else if (choice >= 1 && choice <= 8) {
-            
-            char filename[] = "projects.csv";
-            
-            switch (choice) {
-                case 1: readCSV(filename); break;
-                case 2: addProject(); break;
-                case 3: searchProject(); break;
-                case 4: updateProject(); break;
-                case 5: deleteProject(); break;
-                case 6: showAllProjects(); break;
-                case 7: writeCSV(filename); break;
-                case 8: printf("ออกจากโปรแกรม...\n"); return 0;
-            }
-        } else {
-            printf("เลือกเมนูไม่ถูกต้อง\n");
         }
     }
 
