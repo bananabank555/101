@@ -7,17 +7,21 @@
 #define MAX_PROJECTS 100
 #define MAX_LEN 100
 
-char projectNames[MAX_PROJECTS][MAX_LEN];
-char startDates[MAX_PROJECTS][MAX_LEN];
-char endDates[MAX_PROJECTS][MAX_LEN];
-char evaluationResults[MAX_PROJECTS][MAX_LEN];
+// ใช้ struct เพื่อจัดกลุ่มข้อมูลให้เป็นระเบียบและจัดการง่ายขึ้น
+typedef struct {
+    char name[MAX_LEN];
+    char startDate[MAX_LEN];
+    char endDate[MAX_LEN];
+    char evaluationResult[MAX_LEN];
+} Project;
+ 
+Project projects[MAX_PROJECTS];
 int projectCount = 0;
 
 void readCSV(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         printf("ไม่สามารถเปิดไฟล์ %s\n", filename);
-        return;
     }
 
     char line[512];
@@ -27,21 +31,30 @@ void readCSV(const char *filename) {
 
     while (fgets(line, sizeof(line), file) && projectCount < MAX_PROJECTS) {
         char *token = strtok(line, ",");
-        if (token) strcpy(projectNames[projectCount], token);
+        // ใช้ strncpy เพื่อความปลอดภัย ป้องกัน Buffer Overflow
+        if (token) {
+            strncpy(projects[projectCount].name, token, MAX_LEN - 1);
+            projects[projectCount].name[MAX_LEN - 1] = '\0'; // Ensure null-termination
+        }
 
         token = strtok(NULL, ",");
-        if (token) strcpy(startDates[projectCount], token);
+        if (token) {
+            strncpy(projects[projectCount].startDate, token, MAX_LEN - 1);
+            projects[projectCount].startDate[MAX_LEN - 1] = '\0';
+        }
 
         token = strtok(NULL, ",");
-        if (token) strcpy(endDates[projectCount], token);
+        if (token) {
+            strncpy(projects[projectCount].endDate, token, MAX_LEN - 1);
+            projects[projectCount].endDate[MAX_LEN - 1] = '\0';
+        }
 
         token = strtok(NULL, "\n");
         if (token) {
             size_t len = strlen(token);
-            if (len > 0 && token[len-1] == '\r') {
-                token[len-1] = '\0';
-            }
-            strcpy(evaluationResults[projectCount], token);
+            if (len > 0 && (token[len-1] == '\r' || token[len-1] == '\n')) token[len-1] = '\0';
+            strncpy(projects[projectCount].evaluationResult, token, MAX_LEN - 1);
+            projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
         }
 
         projectCount++;
@@ -59,7 +72,7 @@ void writeCSV(const char *filename) {
 
     fprintf(file, "ProjectName,StartDate,EndDate,EvaluationResult\n");
     for (int i = 0; i < projectCount; i++) {
-        fprintf(file, "%s,%s,%s,%s\n", projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        fprintf(file, "%s,%s,%s,%s\n", projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
     }
 
     fclose(file);
@@ -72,20 +85,38 @@ void addProject() {
         return;
     }
 
+    // ใช้ Buffer และ fgets เพื่อการรับ Input ที่ปลอดภัย
+    char buffer[MAX_LEN * 2]; // Buffer ขนาดใหญ่ขึ้นเล็กน้อยเพื่อตรวจจับ input ที่ยาวเกิน
+
     printf("เพิ่มข้อมูลโครงการใหม่:\n");
 
     printf("ชื่อโครงการ: ");
-    scanf(" %[^\n]", projectNames[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].name, buffer, MAX_LEN - 1);
+    projects[projectCount].name[MAX_LEN - 1] = '\0';
 
     printf("วันที่เริ่ม (DD-MM-YYYY): ");
-    scanf(" %[^\n]", startDates[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].startDate, buffer, MAX_LEN - 1);
+    projects[projectCount].startDate[MAX_LEN - 1] = '\0';
 
     printf("วันที่สิ้นสุด (DD-MM-YYYY): ");
-    scanf(" %[^\n]", endDates[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].endDate, buffer, MAX_LEN - 1);
+    projects[projectCount].endDate[MAX_LEN - 1] = '\0';
 
     printf("ผลการประเมิน: ");
-    scanf(" %[^\n]", evaluationResults[projectCount]);
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) return;
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    strncpy(projects[projectCount].evaluationResult, buffer, MAX_LEN - 1);
+    projects[projectCount].evaluationResult[MAX_LEN - 1] = '\0';
 
+    // ตรวจสอบว่าชื่อโครงการซ้ำหรือไม่ (ตัวอย่าง business logic เพิ่มเติม)
+    // for (int i = 0; i < projectCount; i++) { ... }
+    
     projectCount++;
     printf("เพิ่มข้อมูลสำเร็จ!\n");
 }
@@ -98,19 +129,24 @@ void showAllProjects() {
 
     printf("\n==== ข้อมูลโครงการทั้งหมด ====\n");
     for (int i = 0; i < projectCount; i++) {
-        printf("%d. %s | %s - %s | %s\n", i+1, projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        printf("%d. %s | %s - %s | %s\n", i + 1, projects[i].name, projects[i].startDate, projects[i].endDate, projects[i].evaluationResult);
     }
 }
 
 void searchProject() {
     char keyword[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการหรือผลการประเมินที่ต้องการค้นหา: ");
-    scanf(" %[^\n]", keyword);
+    if (fgets(keyword, sizeof(keyword), stdin) == NULL) return;
+    keyword[strcspn(keyword, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strstr(projectNames[i], keyword) != NULL || strstr(evaluationResults[i], keyword) != NULL) {
-            printf("%d. %s | %s - %s | %s\n", i+1, projectNames[i], startDates[i], endDates[i], evaluationResults[i]);
+        // strstr เป็น case-sensitive, ถ้าต้องการไม่สน case ต้องใช้ strcasestr หรือเขียนฟังก์ชันเอง
+        if (strstr(projects[i].name, keyword) != NULL || strstr(projects[i].evaluationResult, keyword) != NULL) {
+            if (!found) {
+                printf("\nผลการค้นหา:\n");
+            }
+            printf("%d. %s | %s - %s | %s\n", i + 1, projects[i].name, projects[i].endDate, projects[i].endDate, projects[i].evaluationResult);
             found = 1;
         }
     }
@@ -123,23 +159,33 @@ void searchProject() {
 void updateProject() {
     char name[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการแก้ไข: ");
-    scanf(" %[^\n]", name);
+    if (fgets(name, sizeof(name), stdin) == NULL) return;
+    name[strcspn(name, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strcmp(projectNames[i], name) == 0) {
+        if (strcmp(projects[i].name, name) == 0) {
             found = 1;
-            printf("แก้ไขข้อมูลโครงการ: %s\n", projectNames[i]);
+            printf("แก้ไขข้อมูลโครงการ: %s\n", projects[i].name);
 
-            printf("วันที่เริ่มใหม่ (ปัจจุบัน: %s): ", startDates[i]);
-            scanf(" %[^\n]", startDates[i]);
+            char buffer[MAX_LEN];
 
-            printf("วันที่สิ้นสุดใหม่ (ปัจจุบัน: %s): ", endDates[i]);
-            scanf(" %[^\n]", endDates[i]);
+            printf("วันที่เริ่มใหม่ (ปัจจุบัน: %s): ", projects[i].startDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].startDate, buffer, MAX_LEN - 1);
 
-            printf("ผลการประเมินใหม่ (ปัจจุบัน: %s): ", evaluationResults[i]);
-            scanf(" %[^\n]", evaluationResults[i]);
+            printf("วันที่สิ้นสุดใหม่ (ปัจจุบัน: %s): ", projects[i].endDate);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].endDate, buffer, MAX_LEN - 1);
 
+            printf("ผลการประเมินใหม่ (ปัจจุบัน: %s): ", projects[i].evaluationResult);
+            if (fgets(buffer, sizeof(buffer), stdin) == NULL) break;
+            buffer[strcspn(buffer, "\r\n")] = '\0';
+            strncpy(projects[i].evaluationResult, buffer, MAX_LEN - 1);
+
+            // หมายเหตุ: โค้ดนี้ยังไม่รองรับชื่อโครงการซ้ำ
             printf("แก้ไขข้อมูลสำเร็จ!\n");
             break;
         }
@@ -152,17 +198,16 @@ void updateProject() {
 void deleteProject() {
     char name[MAX_LEN];
     printf("กรุณากรอกชื่อโครงการที่ต้องการลบ: ");
-    scanf(" %[^\n]", name);
+    if (fgets(name, sizeof(name), stdin) == NULL) return;
+    name[strcspn(name, "\r\n")] = '\0';
 
     int found = 0;
     for (int i = 0; i < projectCount; i++) {
-        if (strcmp(projectNames[i], name) == 0) {
+        if (strcmp(projects[i].name, name) == 0) {
             found = 1;
+            // เลื่อนข้อมูลในอาร์เรย์ (struct assignment ทำให้ง่ายขึ้น)
             for (int j = i; j < projectCount - 1; j++) {
-                strcpy(projectNames[j], projectNames[j+1]);
-                strcpy(startDates[j], startDates[j+1]);
-                strcpy(endDates[j], endDates[j+1]);
-                strcpy(evaluationResults[j], evaluationResults[j+1]);
+                projects[j] = projects[j+1];
             }
             projectCount--;
             printf("ลบข้อมูลสำเร็จ!\n");
@@ -187,16 +232,10 @@ void displayMenu() {
 }
 
 int main() {
-<<<<<<< HEAD
-    setlocale(LC_ALL, "Thai");
-    SetConsoleOutputCP(65001);
-    SetConsoleCP(65001); 
-=======
     system("chcp 65001");
     setlocale(LC_ALL, "Thai"); 
     SetConsoleOutputCP(65001); 
     SetConsoleCP(65001);       
->>>>>>> ecedb2f080b2257eada6f8dee3c783b7d7412727
 
     int choice;
     char filename[] = "projects.csv";
@@ -205,15 +244,14 @@ int main() {
         displayMenu();
         printf("เลือกเมนู: ");
         
+        // ปรับปรุงการรับเมนูให้ดีขึ้น
         if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n');
-<<<<<<< HEAD
-            printf("กรุณาใส่ตัวเลขเท่านั้น!\n");
-=======
+            while (getchar() != '\n'); // เคลียร์ input buffer ที่ผิดพลาด
             printf("กรุณาใส่ตัวเลขเท่านั้น\n");
->>>>>>> ecedb2f080b2257eada6f8dee3c783b7d7412727
             continue;
         }
+        // เคลียร์ \n ที่เหลือจากการกด Enter หลังใส่ตัวเลข
+        while (getchar() != '\n');
 
         switch (choice) {
             case 1:
